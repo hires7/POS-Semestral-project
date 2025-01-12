@@ -18,11 +18,11 @@ int main() {
             exit(EXIT_FAILURE);
         }
 
-        if (pid == 0) {
+        if (pid == 0) {        			    // child (Klient)
             printf("[Klient] Spúšťam klienta...\n");
             init_client();
             exit(EXIT_SUCCESS);
-        } else {
+        } else {         				   // parent (Server)
             printf("[Server] Spúšťam server...\n");
             init_server();
             wait(NULL);
@@ -39,3 +39,4 @@ int main() {
 
     return 0;
 }
+

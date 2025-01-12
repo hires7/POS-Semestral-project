@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <termios.h>
+#include <fcntl.h>
 
 typedef struct {
     int fd_write;
@@ -62,16 +63,34 @@ void *receive_and_render(void *arg) {
     return NULL;
 }
 
+int open_fifo_retry(const char *path, int flags) {
+    int fd;
+    while ((fd = open(path, flags)) == -1) {
+        printf("[Klient] Čakám na FIFO %s...\n", path);
+        usleep(100000);
+    }
+    return fd;
+}
+
 void init_client() {
-    int fd_write = pipe_open_write(FIFO_CLIENT_TO_SERVER);
-    int fd_read = pipe_open_read(FIFO_SERVER_TO_CLIENT);
+    printf("[Klient] Čakám na FIFO kanály...\n");
+
+    int fd_write = open_fifo_retry(FIFO_CLIENT_TO_SERVER, O_WRONLY);
+    int fd_read = open_fifo_retry(FIFO_SERVER_TO_CLIENT, O_RDONLY);
 
     ClientArgs args = {fd_write, fd_read};
 
     pthread_t thread_input, thread_render;
 
-    pthread_create(&thread_input, NULL, handle_input, &args);
-    pthread_create(&thread_render, NULL, receive_and_render, &args);
+    if (pthread_create(&thread_input, NULL, handle_input, &args) != 0) {
+        perror("[Klient] Chyba pri vytváraní vlákna pre vstup");
+        exit(EXIT_FAILURE);
+    }
+
+    if (pthread_create(&thread_render, NULL, receive_and_render, &args) != 0) {
+        perror("[Klient] Chyba pri vytváraní vlákna pre renderovanie");
+        exit(EXIT_FAILURE);
+    }
 
     pthread_join(thread_input, NULL);
     pthread_join(thread_render, NULL);
@@ -79,5 +98,4 @@ void init_client() {
     pipe_close(fd_write);
     pipe_close(fd_read);
 }
-
 

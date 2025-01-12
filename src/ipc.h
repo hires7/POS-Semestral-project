@@ -29,6 +29,7 @@ typedef struct {
     Command current_direction;
 } GameState;
 
+
 void pipe_init(const char *path);
 void pipe_destroy(const char *path);
 int pipe_open_write(const char *path);

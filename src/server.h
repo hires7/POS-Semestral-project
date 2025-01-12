@@ -6,9 +6,12 @@
 
 #include "ipc.h"
 
-// Deklarácia funkcií
-void init_server();
 void place_fruit(GameState *state);
+int check_wall_collision(GameState *state);
+int check_self_collision(GameState *state);
+void update_snake_body(GameState *state);
+void move_snake(GameState *state);
+void init_server();
 
 #endif
 

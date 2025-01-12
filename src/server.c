@@ -4,25 +4,29 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <sys/select.h>
-#include <sys/time.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <sys/select.h>  // Pre FD_ZERO, FD_SET, select
+#include <sys/time.h>    // Pre struct timeval
+#include <unistd.h>      // Pre usleep
+#include <stdio.h>       // Pre printf, perror
+#include <stdlib.h>      // Pre exit
 
-#define MOVE_INTERVAL 500000
 
+#define MOVE_INTERVAL 500000 // 500 ms
+
+// Funkcia na umiestnenie ovocia na náhodnú pozíciu
 void place_fruit(GameState *state) {
     state->fruit_x = rand() % MAP_WIDTH;
     state->fruit_y = rand() % MAP_HEIGHT;
     printf("[Server] Ovocie umiestnené na (%d, %d)\n", state->fruit_x, state->fruit_y);
 }
 
+// Kontrola kolízie so stenami
 int check_wall_collision(GameState *state) {
     return state->snake_x < 0 || state->snake_x >= MAP_WIDTH ||
            state->snake_y < 0 || state->snake_y >= MAP_HEIGHT;
 }
 
+// Kontrola kolízie so sebou
 int check_self_collision(GameState *state) {
     for (int i = 0; i < state->snake_length; i++) {
         if (state->snake_x == state->snake_body[i][0] &&
@@ -33,6 +37,7 @@ int check_self_collision(GameState *state) {
     return 0;
 }
 
+// Aktualizácia tela hada
 void update_snake_body(GameState *state) {
     for (int i = state->snake_length - 1; i > 0; i--) {
         state->snake_body[i][0] = state->snake_body[i - 1][0];
@@ -42,6 +47,7 @@ void update_snake_body(GameState *state) {
     state->snake_body[0][1] = state->snake_y;
 }
 
+// Automatický pohyb hada
 void move_snake(GameState *state) {
     switch (state->current_direction) {
         case CMD_MOVE_UP:    state->snake_y--; break;
@@ -78,9 +84,10 @@ void init_server() {
     place_fruit(&state);
 
     Command cmd;
-    int is_paused = 0;
+    int is_paused = 0; // Indikátor pauzy
 
     while (state.is_running) {
+        // Ak je hra pozastavená, čaká na obnovenie
         if (is_paused) {
             pipe_read(fd_read, &cmd, sizeof(Command));
             if (cmd == CMD_PAUSE) {
@@ -90,6 +97,7 @@ void init_server() {
             continue;
         }
 
+        // Spracovanie príkazu od klienta
         fd_set fds;
         struct timeval timeout = {0, 0};
 
@@ -102,7 +110,7 @@ void init_server() {
             pipe_read(fd_read, &cmd, sizeof(Command));
             if (cmd == CMD_PAUSE) {
                 printf("[Server] Hra pozastavená.\n");
-                is_paused = 1;
+                is_paused = 1; // Aktivácia pauzy
                 continue;
             } else if (cmd == CMD_EXIT) {
                 state.is_running = 0;
@@ -111,8 +119,10 @@ void init_server() {
             }
         }
 
+        // Pohyb hada
         move_snake(&state);
 
+        // Kontrola kolízií
         if (check_wall_collision(&state) || check_self_collision(&state)) {
             printf("[Server] Kolízia! Hra končí.\n");
             state.is_running = 0;
